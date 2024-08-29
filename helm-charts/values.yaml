@@ -1,0 +1,38 @@
+# Global values
+replicaCount: 2
+image:
+  repository: myregistry/myapp
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Service settings
+service:
+  type: LoadBalancer
+  port: 80
+
+# Istio settings
+istio:
+  enabled: true
+  gateway:
+    hosts:
+      - "yourdomain.com"
+    port: 443
+  virtualService:
+    hosts:
+      - "yourdomain.com"
+    gateways:
+      - myapp-gateway
+
+
+# Environment variables
+env:
+  - name: MYAPP_ENV
+    value: "production"
+
+# Secrets
+secrets:
+  dbPassword: "your-secure-password"
+
+# ConfigMap
+config:
+  logLevel: "info"

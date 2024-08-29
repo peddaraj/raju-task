@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+
+    environment {
+        REPO = 'myregistry/myapp'
+        TAG = 'latest'
+        KUBECONFIG = credentials('kubeconfig') // Jenkins credential containing kubeconfig
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/peddaraj/raju-task.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    def app = docker.build("${REPO}:${TAG}")
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                script {
+                    docker.image("${REPO}:${TAG}").inside {
+                        sh 'npm install' // Example for Node.js app
+                        sh 'npm test' // Run tests
+                    }
+                }
+            }
+        }
+
+        stage('Push') {
+            steps {
+                script {
+                    docker.withRegistry('https://myregistry.com', 'docker-credentials-id') {
+                        docker.image("${REPO}:${TAG}").push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    sh '''
+                    helm upgrade --install myapp ./myapp-chart \
+                        --set image.repository=${REPO} \
+                        --set image.tag=${TAG}
+                    '''
+                }
+            }
+        }
+
+        stage('Integration Test') {
+            steps {
+                script {
+                    // Run integration tests
+                    sh 'curl -f http://your-app-url/health'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
